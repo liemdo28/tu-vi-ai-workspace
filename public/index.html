@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bát Tự - Tử Vi AI Workspace</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="ambient"></div>
+    <main class="layout">
+      <aside class="sidebar glass">
+        <div class="brand">
+          <p class="eyebrow">BÁT TỰ INTELLIGENCE</p>
+          <h1>Bát Tự - Tử Vi AI</h1>
+          <p>Không gian phân tích hồ sơ mệnh lý, hỏi đáp AI, lịch hành động và đồng bộ đa thiết bị.</p>
+        </div>
+
+        <section class="auth-box">
+          <div class="auth-head">
+            <h3>Tài khoản Cloud</h3>
+            <span id="sync-mode" class="chip">Local</span>
+          </div>
+          <p id="auth-status" class="muted">Chưa đăng nhập. Dữ liệu đang lưu trên trình duyệt này.</p>
+          <div class="auth-grid">
+            <input id="auth-display" placeholder="Tên hiển thị (đăng ký)" />
+            <input id="auth-email" type="email" placeholder="Email" />
+            <input id="auth-password" type="password" placeholder="Mật khẩu" />
+          </div>
+          <div class="auth-actions">
+            <button id="register-btn" type="button">Đăng ký</button>
+            <button id="login-btn" type="button">Đăng nhập</button>
+            <button id="logout-btn" type="button" class="ghost">Đăng xuất</button>
+          </div>
+          <button id="sync-now-btn" type="button" class="line-btn">Đồng bộ ngay</button>
+        </section>
+
+        <div class="folder-head">
+          <p>\Nhân Mệnh\</p>
+          <button id="new-profile-btn" type="button">+ Thêm người</button>
+        </div>
+        <ul id="profile-list" class="profile-list"></ul>
+      </aside>
+
+      <section class="main">
+        <header class="glass topbar">
+          <div>
+            <p class="muted">Hồ sơ đang chọn</p>
+            <h2 id="current-name">Chưa chọn</h2>
+          </div>
+          <div class="tabs">
+            <button class="tab-btn active" data-tab="analysis" type="button">Phân tích</button>
+            <button class="tab-btn" data-tab="qa" type="button">Hỏi đáp AI</button>
+            <button class="tab-btn" data-tab="calendar" type="button">Calendar</button>
+          </div>
+        </header>
+
+        <section id="tab-analysis" class="glass panel active">
+          <div class="section-head">
+            <h3>Thông tin hồ sơ</h3>
+            <p id="status" class="muted">Sẵn sàng.</p>
+          </div>
+
+          <form id="profile-form" class="form-grid">
+            <label>
+              <span>Họ và tên</span>
+              <input id="name" required placeholder="Nguyễn Văn A" />
+            </label>
+            <label>
+              <span>Giới tính</span>
+              <select id="gender">
+                <option value="Nam">Nam</option>
+                <option value="Nữ">Nữ</option>
+                <option value="Khác">Khác</option>
+              </select>
+            </label>
+            <label>
+              <span>Ngày sinh (Dương lịch)</span>
+              <input id="birth-date" type="date" required />
+            </label>
+            <label>
+              <span>Giờ sinh (Can Chi)</span>
+              <select id="birth-chi">
+                <option value="Tý">Giờ Tý (23:00-00:59)</option>
+                <option value="Sửu">Giờ Sửu (01:00-02:59)</option>
+                <option value="Dần">Giờ Dần (03:00-04:59)</option>
+                <option value="Mão">Giờ Mão (05:00-06:59)</option>
+                <option value="Thìn">Giờ Thìn (07:00-08:59)</option>
+                <option value="Tỵ">Giờ Tỵ (09:00-10:59)</option>
+                <option value="Ngọ" selected>Giờ Ngọ (11:00-12:59)</option>
+                <option value="Mùi">Giờ Mùi (13:00-14:59)</option>
+                <option value="Thân">Giờ Thân (15:00-16:59)</option>
+                <option value="Dậu">Giờ Dậu (17:00-18:59)</option>
+                <option value="Tuất">Giờ Tuất (19:00-20:59)</option>
+                <option value="Hợi">Giờ Hợi (21:00-22:59)</option>
+              </select>
+            </label>
+            <label>
+              <span>Nơi sinh</span>
+              <input id="birth-place" placeholder="TP.HCM, Việt Nam" />
+            </label>
+            <label>
+              <span>Timezone</span>
+              <input id="timezone" value="Asia/Ho_Chi_Minh" />
+            </label>
+            <div class="actions">
+              <button id="save-btn" type="button">Lưu hồ sơ</button>
+              <button id="analyze-btn" type="submit">Phân tích Bát tự/Tử vi</button>
+              <button id="delete-btn" type="button" class="ghost">Xóa</button>
+            </div>
+          </form>
+
+          <div id="analysis-content" class="analysis-grid">
+            <article class="card">
+              <h4>Ngày sinh</h4>
+              <p id="solar-line">-</p>
+              <p id="lunar-line">-</p>
+              <p id="weekday-line">-</p>
+            </article>
+            <article class="card">
+              <h4>Bộ trụ Bát tự</h4>
+              <ul id="pillar-list" class="plain-list">
+                <li>-</li>
+              </ul>
+            </article>
+            <article class="card">
+              <h4>Ngũ hành</h4>
+              <ul id="element-list" class="plain-list">
+                <li>-</li>
+              </ul>
+            </article>
+            <article class="card wide">
+              <h4>Giờ hoàng đạo</h4>
+              <p id="hoang-dao-line">-</p>
+            </article>
+            <article class="card wide">
+              <h4>Tổng kết tử vi</h4>
+              <p id="tuvi-overview">-</p>
+              <ul id="tuvi-recommend" class="plain-list">
+                <li>-</li>
+              </ul>
+            </article>
+          </div>
+        </section>
+
+        <section id="tab-qa" class="glass panel">
+          <div class="section-head">
+            <h3>Đặt câu hỏi theo từng người</h3>
+            <p class="muted">AI + Web Search + Calendar context</p>
+          </div>
+          <form id="qa-form" class="qa-form">
+            <textarea
+              id="question-input"
+              rows="4"
+              placeholder="Ví dụ: Năm 2026 tôi nên tập trung vào công việc gì để tăng thu nhập bền vững?"
+              required
+            ></textarea>
+            <div class="tool-row">
+              <label><input id="use-ai" type="checkbox" checked /> Dùng AI</label>
+              <label><input id="use-web" type="checkbox" checked /> Web Search</label>
+              <label><input id="use-cal" type="checkbox" /> Gợi ý Calendar</label>
+            </div>
+            <button type="submit">Phân tích câu hỏi</button>
+          </form>
+          <div id="qa-history" class="qa-history"></div>
+        </section>
+
+        <section id="tab-calendar" class="glass panel">
+          <div class="section-head">
+            <h3>Lịch hành động 30-45 ngày</h3>
+            <button id="gen-calendar-btn" type="button">Tạo lịch đề xuất</button>
+          </div>
+          <div id="calendar-list" class="calendar-list"></div>
+        </section>
+      </section>
+    </main>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>
