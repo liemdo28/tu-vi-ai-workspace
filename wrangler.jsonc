@@ -1,0 +1,13 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "tu-vi-ai-workspace",
+  "compatibility_date": "2026-03-06",
+  "pages_build_output_dir": "public",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "tu-vi-ai-db",
+      "database_id": "b62bdc7c-7c5b-483d-8615-8477d9082758"
+    }
+  ]
+}
