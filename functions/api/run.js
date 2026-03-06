@@ -129,6 +129,7 @@ function analyzeProfile(input) {
     bazi,
     webItems: []
   });
+  const fengShui = buildFengShuiProfile(profile, bazi, elements);
 
   return {
     profile,
@@ -149,6 +150,7 @@ function analyzeProfile(input) {
     hoang_dao_hours: hoangDao,
     elements,
     quality,
+    feng_shui: fengShui,
     tu_vi: {
       overview:
         `${profile.name} có mệnh cục theo 4 trụ: ${yearPillar} | ${monthPillar} | ${dayPillar} | ${hourPillar}. ` +
@@ -198,8 +200,9 @@ async function askProfile(body, env) {
     bazi: analysis.bazi,
     webItems: web.items
   });
+  const fengShui = analysis.feng_shui || buildFengShuiProfile(analysis.profile, analysis.bazi, analysis.elements);
 
-  const heuristicReport = buildHeuristicReport(question, analysis, quality, web.items);
+  const heuristicReport = buildHeuristicReport(question, analysis, quality, web.items, fengShui);
 
   let aiProvider = "heuristic";
   let finalReport = heuristicReport;
@@ -241,7 +244,7 @@ async function askProfile(body, env) {
   };
 }
 
-function buildHeuristicReport(question, analysis, quality, webItems) {
+function buildHeuristicReport(question, analysis, quality, webItems, fengShui) {
   const intent = classifyQuestion(question);
   const dominant = analysis.elements.dominant.join(", ");
   const weak = analysis.elements.weakest.join(", ");
@@ -283,6 +286,13 @@ function buildHeuristicReport(question, analysis, quality, webItems) {
       content:
         `Tỷ lệ giờ hoàng đạo hiện tại: ${quality.hour_success_ratio}. ` +
         "Nên đặt các việc quan trọng (đàm phán, quyết định, ký kết) vào các khung giờ thuận để tăng độ ổn định tâm lý và hiệu suất."
+    },
+    {
+      title: "Phong thủy ứng dụng",
+      content:
+        `Hướng ưu tiên: ${(fengShui?.favorable_directions || []).join(", ") || "linh hoạt theo không gian"}; ` +
+        `Màu hợp: ${(fengShui?.favorable_colors || []).join(", ") || "trung tính ấm"}; ` +
+        `Vật phẩm gợi ý: ${(fengShui?.material_focus || []).join(", ") || "ưu tiên gỗ, gốm, ánh sáng dịu"}.`
     }
   ];
 
@@ -293,6 +303,7 @@ function buildHeuristicReport(question, analysis, quality, webItems) {
     metric_table: quality.metric_table,
     detailed_analysis: detailed,
     action_plan: buildActionPlan(intent, quality),
+    feng_shui_advice: buildFengShuiAdviceForQuestion(intent, fengShui),
     verification_notes: [
       "Mệnh lý không thay thế dữ liệu thực tế.",
       "Các quyết định tài chính/sức khỏe/pháp lý cần tư vấn chuyên môn.",
@@ -441,11 +452,17 @@ function sourceQualityScore(webItems) {
 
 async function askOpenAI(question, analysis, quality, webItems, env) {
   const model = clean(env.OPENAI_MODEL) || "gpt-4.1-mini";
+  const fengShui = analysis.feng_shui || buildFengShuiProfile(analysis.profile, analysis.bazi, analysis.elements);
   const schemaHint = {
     summary: "string",
     direct_answer: "string",
     detailed_analysis: [{ title: "string", content: "string" }],
     action_plan: [{ priority: "Cao|Trung bình|Thấp", action: "string", timeline: "string", reason: "string" }],
+    feng_shui_advice: {
+      title: "string",
+      recommendations: ["string"],
+      cautions: ["string"]
+    },
     verification_notes: ["string"]
   };
 
@@ -483,6 +500,7 @@ async function askOpenAI(question, analysis, quality, webItems, env) {
                   `Hồ sơ: ${JSON.stringify(analysis.profile)}\n` +
                   `Bát tự: ${JSON.stringify(analysis.bazi)}\n` +
                   `Ngũ hành: ${JSON.stringify(analysis.elements)}\n` +
+                  `Phong thủy ứng dụng: ${JSON.stringify(fengShui)}\n` +
                   `Thống kê định lượng: ${JSON.stringify(quality.metric_table)}\n` +
                   `Nguồn web đã lọc: ${JSON.stringify(webItems.slice(0, 6))}\n` +
                   `Schema bắt buộc: ${JSON.stringify(schemaHint)}`
@@ -525,6 +543,18 @@ async function askOpenAI(question, analysis, quality, webItems, env) {
           }))
           .filter((x) => x.action)
       : [],
+    feng_shui_advice:
+      parsed.feng_shui_advice && typeof parsed.feng_shui_advice === "object"
+        ? {
+            title: clean(parsed.feng_shui_advice.title) || "Phong thủy theo câu hỏi",
+            recommendations: Array.isArray(parsed.feng_shui_advice.recommendations)
+              ? parsed.feng_shui_advice.recommendations.map((x) => clean(String(x))).filter(Boolean)
+              : [],
+            cautions: Array.isArray(parsed.feng_shui_advice.cautions)
+              ? parsed.feng_shui_advice.cautions.map((x) => clean(String(x))).filter(Boolean)
+              : []
+          }
+        : null,
     verification_notes: Array.isArray(parsed.verification_notes)
       ? parsed.verification_notes.map((x) => clean(String(x))).filter(Boolean)
       : []
@@ -540,6 +570,7 @@ function mergeReports(base, ai) {
     metric_table: base.metric_table,
     detailed_analysis: ai.detailed_analysis && ai.detailed_analysis.length ? ai.detailed_analysis : base.detailed_analysis,
     action_plan: ai.action_plan && ai.action_plan.length ? ai.action_plan : base.action_plan,
+    feng_shui_advice: ai.feng_shui_advice || base.feng_shui_advice,
     verification_notes:
       ai.verification_notes && ai.verification_notes.length
         ? ai.verification_notes
@@ -800,6 +831,135 @@ function calcElements(pillars) {
   const dominant = Object.keys(counts).filter((k) => counts[k] === max);
   const weakest = Object.keys(counts).filter((k) => counts[k] === min);
   return { counts, dominant, weakest, favorable: dominant };
+}
+
+function buildFengShuiProfile(profile, bazi, elements) {
+  const core = bazi?.day_master_element || (elements?.dominant || [])[0] || "Thổ";
+  const weak = Array.isArray(elements?.weakest) ? elements.weakest : [];
+  const supportMap = {
+    Mộc: ["Thủy", "Mộc"],
+    Hỏa: ["Mộc", "Hỏa"],
+    Thổ: ["Hỏa", "Thổ"],
+    Kim: ["Thổ", "Kim"],
+    Thủy: ["Kim", "Thủy"]
+  };
+  const directionMap = {
+    Mộc: { favorable: ["Đông", "Đông Nam"], caution: ["Tây", "Tây Bắc"] },
+    Hỏa: { favorable: ["Nam", "Đông Nam"], caution: ["Bắc"] },
+    Thổ: { favorable: ["Đông Bắc", "Tây Nam"], caution: ["Đông"] },
+    Kim: { favorable: ["Tây", "Tây Bắc"], caution: ["Nam"] },
+    Thủy: { favorable: ["Bắc", "Tây Bắc"], caution: ["Đông Bắc"] }
+  };
+  const colorMap = {
+    Mộc: ["Xanh lá", "Xanh ngọc", "Nâu gỗ"],
+    Hỏa: ["Đỏ trầm", "Cam đất", "Hồng ấm"],
+    Thổ: ["Vàng đất", "Nâu", "Be"],
+    Kim: ["Trắng kem", "Xám sáng", "Ánh kim nhạt"],
+    Thủy: ["Xanh dương", "Đen", "Xanh than"]
+  };
+  const materialMap = {
+    Mộc: ["Gỗ tự nhiên", "Cây xanh lá bản rộng", "Sợi mây tre"],
+    Hỏa: ["Đèn ánh sáng ấm", "Nến thơm nhẹ", "Vật liệu da"],
+    Thổ: ["Gốm sứ", "Đá tự nhiên", "Đồ vuông vững"],
+    Kim: ["Kim loại sáng", "Kính", "Đá trắng"],
+    Thủy: ["Kính cong", "Trang trí phản chiếu", "Điểm nhấn màu tối"]
+  };
+
+  const orientation = directionMap[core] || directionMap.Thổ;
+  const support = supportMap[core] || ["Thổ"];
+  const balanceFocus = Array.from(new Set(weak.concat(support))).slice(0, 3);
+  const birthChi = profile?.birth_chi || "Ngọ";
+
+  return {
+    core_element: core,
+    support_elements: support,
+    balance_focus: balanceFocus,
+    favorable_directions: orientation.favorable,
+    caution_directions: orientation.caution,
+    favorable_colors: colorMap[core] || colorMap.Thổ,
+    material_focus: materialMap[core] || materialMap.Thổ,
+    preferred_hour_branch: birthChi,
+    preferred_hour_range: chiToRange(birthChi),
+    layout_tips: [
+      `Bàn làm việc nên xoay về ${orientation.favorable.join(" hoặc ")} nếu không gian cho phép.`,
+      `Ưu tiên nhóm màu ${((colorMap[core] || []).slice(0, 2)).join(", ")} cho khu vực làm việc/chủ đạo.`,
+      `Giữ khu trung tâm gọn và sáng để hỗ trợ cân bằng ${balanceFocus.join(", ")}.`
+    ]
+  };
+}
+
+function buildFengShuiAdviceForQuestion(intent, fengShui) {
+  const direction = (fengShui?.favorable_directions || []).join(", ") || "hướng thuận hiện hữu";
+  const colors = (fengShui?.favorable_colors || []).join(", ") || "tông trung tính";
+  const avoid = (fengShui?.caution_directions || []).join(", ") || "khu vực tối, ẩm";
+  const hourHint = fengShui?.preferred_hour_branch
+    ? `${fengShui.preferred_hour_branch} (${fengShui.preferred_hour_range || "-"})`
+    : "khung giờ hoàng đạo trong ngày";
+
+  const byIntent = {
+    career: {
+      title: "Phong thủy công việc",
+      recommendations: [
+        `Đặt khu làm việc theo hướng ${direction} để tăng tập trung khi xử lý mục tiêu dài hạn.`,
+        `Dùng màu ${colors} cho bàn, sổ kế hoạch, hoặc giao diện làm việc để giữ nhịp ổn định.`,
+        `Sắp lịch họp/ra quyết định vào giờ ${hourHint} khi có thể.`
+      ],
+      cautions: [
+        `Tránh ngồi quay lưng về ${avoid} khi đàm phán hoặc xử lý việc quan trọng.`,
+        "Không để bàn làm việc bừa bộn vì dễ làm lệch nhịp hành động theo kế hoạch."
+      ]
+    },
+    finance: {
+      title: "Phong thủy tài chính",
+      recommendations: [
+        `Góc theo dõi tiền bạc nên đặt theo hướng ${direction}, ánh sáng ổn định và ít nhiễu.`,
+        `Dùng điểm nhấn màu ${colors} cho khu vực lưu tài liệu tài chính để giữ tính kỷ luật.`,
+        `Mỗi tuần chọn một khung giờ ${hourHint} để rà soát dòng tiền và danh mục.`
+      ],
+      cautions: [
+        `Tránh ra quyết định giải ngân lớn khi ngồi ở khu vực đối nghịch ${avoid}.`,
+        "Không mua bán theo cảm xúc, luôn bám ngưỡng rủi ro đã định."
+      ]
+    },
+    relationship: {
+      title: "Phong thủy tình cảm",
+      recommendations: [
+        `Không gian trò chuyện nên ưu tiên hướng ${direction}, ánh sáng mềm và bố cục cân bằng.`,
+        `Màu ${colors} phù hợp cho vật dụng chung để giảm căng thẳng khi trao đổi kỳ vọng.`,
+        `Duy trì thói quen đối thoại vào giờ ${hourHint} để dễ giữ bình tĩnh.`
+      ],
+      cautions: [
+        `Hạn chế tranh luận dài trong vùng hướng ${avoid} hoặc nơi thiếu thông thoáng.`,
+        "Không đưa quyết định cảm xúc khi đang mệt hoặc mất nhịp sinh hoạt."
+      ]
+    },
+    health: {
+      title: "Phong thủy sức khỏe",
+      recommendations: [
+        `Giường nghỉ/ngóc thư giãn nên ưu tiên hướng ${direction} để hỗ trợ hồi phục nhịp sinh học.`,
+        `Kết hợp màu ${colors} cho không gian nghỉ để giảm nhiễu thần kinh.`,
+        `Giữ lịch ngủ đều và chốt giờ nghỉ gần khung ${hourHint}.`
+      ],
+      cautions: [
+        `Tránh đặt chỗ nghỉ ở khu vực đối nghịch ${avoid} nếu khu này bí khí hoặc ồn.`,
+        "Mệnh lý không thay thế khám chữa bệnh; có dấu hiệu bất thường cần khám chuyên môn."
+      ]
+    },
+    generic: {
+      title: "Phong thủy theo mục tiêu",
+      recommendations: [
+        `Ưu tiên hướng ${direction} cho khu làm việc/chủ động hành động.`,
+        `Dùng palette ${colors} để giữ nhịp tâm lý ổn định trong giai đoạn 30-90 ngày.`,
+        `Chọn khung giờ ${hourHint} cho các việc cần tập trung cao.`
+      ],
+      cautions: [
+        `Hạn chế xử lý việc lớn khi ngồi ở hướng ${avoid}.`,
+        "Giữ không gian thông thoáng và loại bỏ vật dụng gây xao nhãng."
+      ]
+    }
+  };
+
+  return byIntent[intent] || byIntent.generic;
 }
 
 function goodHours(jd) {

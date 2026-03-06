@@ -36,7 +36,9 @@ const ui = {
     elements: document.getElementById("element-list"),
     hoangDao: document.getElementById("hoang-dao-line"),
     tuviOverview: document.getElementById("tuvi-overview"),
-    tuviRecommend: document.getElementById("tuvi-recommend")
+    tuviRecommend: document.getElementById("tuvi-recommend"),
+    fengshuiOverview: document.getElementById("fengshui-overview"),
+    fengshuiList: document.getElementById("fengshui-list")
   },
   auth: {
     display: document.getElementById("auth-display"),
@@ -237,6 +239,8 @@ function renderAnalysis(profile) {
     ui.analysis.hoangDao.textContent = "-";
     ui.analysis.tuviOverview.textContent = "-";
     ui.analysis.tuviRecommend.innerHTML = "<li>-</li>";
+    ui.analysis.fengshuiOverview.textContent = "-";
+    ui.analysis.fengshuiList.innerHTML = "<li>-</li>";
     return;
   }
 
@@ -277,6 +281,25 @@ function renderAnalysis(profile) {
   ui.analysis.tuviOverview.textContent = analysis.tu_vi?.overview || "-";
   const rec = Array.isArray(analysis.tu_vi?.recommendations) ? analysis.tu_vi.recommendations : [];
   ui.analysis.tuviRecommend.innerHTML = rec.length ? rec.map((r) => `<li>${esc(r)}</li>`).join("") : "<li>-</li>";
+
+  const feng = analysis.feng_shui || null;
+  if (!feng) {
+    ui.analysis.fengshuiOverview.textContent = "-";
+    ui.analysis.fengshuiList.innerHTML = "<li>-</li>";
+  } else {
+    ui.analysis.fengshuiOverview.textContent = `Hành cốt lõi: ${feng.core_element || "-"} | Hướng hợp: ${
+      (feng.favorable_directions || []).join(", ") || "-"
+    }`;
+    const tips = []
+      .concat(
+        `Màu hợp: ${(feng.favorable_colors || []).join(", ") || "-"}`,
+        `Vật liệu gợi ý: ${(feng.material_focus || []).join(", ") || "-"}`,
+        `Giờ ưu tiên: ${feng.preferred_hour_branch || "-"} (${feng.preferred_hour_range || "-"})`,
+        Array.isArray(feng.layout_tips) ? feng.layout_tips : []
+      )
+      .filter(Boolean);
+    ui.analysis.fengshuiList.innerHTML = tips.length ? tips.map((r) => `<li>${esc(r)}</li>`).join("") : "<li>-</li>";
+  }
 }
 
 function renderQA(profile) {
@@ -326,6 +349,13 @@ function renderQAItem(item) {
   const notes = Array.isArray(report.verification_notes)
     ? report.verification_notes.map((n) => `<li>${esc(n)}</li>`).join("")
     : "";
+  const feng = report.feng_shui_advice && typeof report.feng_shui_advice === "object" ? report.feng_shui_advice : null;
+  const fengRecommendations = Array.isArray(feng?.recommendations)
+    ? feng.recommendations.map((n) => `<li>${formatMultiline(n)}</li>`).join("")
+    : "";
+  const fengCautions = Array.isArray(feng?.cautions)
+    ? feng.cautions.map((n) => `<li>${formatMultiline(n)}</li>`).join("")
+    : "";
 
   const srcRows = Array.isArray(item.sources)
     ? item.sources
@@ -360,6 +390,15 @@ function renderQAItem(item) {
       ${
         planRows
           ? `<div class="table-wrap"><table><thead><tr><th>Ưu tiên</th><th>Hành động</th><th>Thời gian</th><th>Lý do</th></tr></thead><tbody>${planRows}</tbody></table></div>`
+          : ""
+      }
+      ${
+        feng
+          ? `<section class="feng-box">
+              <h5>${esc(feng.title || "Phong thủy theo câu hỏi")}</h5>
+              ${fengRecommendations ? `<p class="mini-title">Nên làm</p><ul class="source-list">${fengRecommendations}</ul>` : ""}
+              ${fengCautions ? `<p class="mini-title">Cần tránh</p><ul class="source-list warn-list">${fengCautions}</ul>` : ""}
+            </section>`
           : ""
       }
       ${notes ? `<ul class="source-list">${notes}</ul>` : ""}
@@ -769,7 +808,29 @@ function setAuthStatus(message, isError = false) {
 
 function formatMultiline(text) {
   const safe = esc(String(text || ""));
-  return safe.replaceAll("\n", "<br>");
+  const highlighted = highlightKeywords(safe);
+  return highlighted.replaceAll("\n", "<br>");
+}
+
+function highlightKeywords(text) {
+  const patterns = [
+    "Ưu tiên",
+    "Hành động",
+    "Mục tiêu",
+    "KPI",
+    "Nên làm",
+    "Cần tránh",
+    "Không nên",
+    "Cần chú ý",
+    "Tránh",
+    "Rủi ro",
+    "Kiểm chứng",
+    "Giờ thuận",
+    "Phong thủy"
+  ];
+  const escaped = patterns.map((x) => x.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  const re = new RegExp(`(^|[\\s\\(\\[\\{>\\-])(${escaped.join("|")})(?=[:\\s,.!?]|$)`, "giu");
+  return text.replace(re, "$1<strong>$2</strong>");
 }
 
 function clean(value) {
