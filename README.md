@@ -59,3 +59,5 @@ Deploy lên Cloudflare Pages và dùng domain dạng:
 ## Lưu ý
 - Bát tự/Tử vi chỉ mang tính tham khảo.
 - Quyết định tài chính/sức khỏe/pháp lý cần kết hợp dữ liệu thực tế và chuyên gia.
+# MI-CORE GITHUB CONTROL PROOF
+Generated: 2026-06-24T06:07:08Z
